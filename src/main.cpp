@@ -17,13 +17,13 @@ public:
     }
 };
 class $modify(PlayerObject){
-	TodoReturn playerDestroyed(bool p2){
+	void playerDestroyed(bool p2){
 		PlayerObject::playerDestroyed(p2);
 		deaths++;
 	}
 };
 class $modify(PlayLayer) {
-	TodoReturn incrementJumps(){
+	void incrementJumps(){
 		PlayLayer::incrementJumps();
 		jumps++;
 	}
@@ -33,7 +33,7 @@ class $modify(PlayLayer) {
 		jumps = 0;
 		return PlayLayer::init(p0,p1,p2);
 	}
-	TodoReturn updateProgressbar(){
+	void updateProgressbar(){
 		//geode::log::info("d: {} j: {}",deaths,jumps);
 		if (deaths == 2&&jumps == 0){
 		PlayLayer::showHint();
@@ -41,12 +41,12 @@ class $modify(PlayLayer) {
 		PlayLayer::updateProgressbar();
 		
 	}
-	/*TodoReturn onQuit(){
+	/*void onQuit(){
 		PlayLayer::onQuit();
 		deaths = 0;
 		jumps = 0;
 	}*/
-	TodoReturn showHint() {
+	void showHint() {
 		// Modified decomp of PlayLayer::showHint
     //std::cout << this->m_level->m_levelID << std::endl;
     //std::cout << self->m_level->m_sLevelName;
