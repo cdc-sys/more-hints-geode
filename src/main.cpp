@@ -87,9 +87,9 @@ class $modify(PlayLayer) {
         {16,{"You get split into two when touching a Dual Portal",0.6f,4.0f}},
         {17,{"The wave goes up while you're holding"}},
         {18,{""}},
-        {19,{"Click / Space to jump over the monster"}},
+        {19,{"Long Press in the Robot gamemode to jump higher!"}},
         {20,{""}},
-        {21,{"Hold to dash!"}},
+        {21,{"Hold on a Dash Ring to Dash!"}},
         {22,{"I know Geometry Dash is supposed to be unfair but this isn't sightreadable at all.",0.35f,4.5f}},
         {3001,{"This level is absolutely filled with bugs..."}}
     };
