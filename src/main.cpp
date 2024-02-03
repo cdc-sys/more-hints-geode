@@ -53,6 +53,7 @@ class $modify(PlayLayer) {
     if (!hintAnimationFinished) {
         return;
     }
+    
     hintAnimationFinished = false;
     auto director = CCDirector::sharedDirector();
     auto winSize = director->getWinSize();
@@ -113,7 +114,12 @@ class $modify(PlayLayer) {
 	
     //std::cout << "hint: " << hints[levelID].hint << " scale: " << hints[levelID].scale << " delay: " << hints[levelID].delay << std::endl;
     auto text = CCLabelBMFont::create(hints[levelID].hint, "bigFont.fnt");
-    text->setPosition({ winSize.width * 0.5f,winSize.height * 0.5f + 60.f });
+    if (hints[levelID].hint != ""){
+    //auto hintlayer = FLAlertLayer::create("Hint",hints[levelID].hint,"OK");
+    }
+    // OG Pos: +60
+    if (Mod::get()->getSettingValue<bool>("new-layout")){
+    text->setPosition({ winSize.width * 0.5f,winSize.height * 0.5f + 80.f });
     text->setScale(hints[levelID].scale);
     text->setOpacity(0);
     text->runAction(
@@ -125,7 +131,40 @@ class $modify(PlayLayer) {
         nullptr
         )
     );
+    auto text2 = CCLabelBMFont::create("Hint!", "goldFont.fnt");
+    text2->setPosition({ winSize.width * 0.5f,winSize.height * 0.5f + 120.f });
+    text2->setScale(1.2f);
+    text2->setOpacity(0);
+    text2->runAction(
+        CCSequence::create(
+        CCFadeIn::create(0.5),
+        CCDelayTime::create(hints[levelID].delay),
+        CCFadeOut::create(0.5),
+        CCCallFuncO::create(text,callfuncO_selector(HintNode::onFinishAnim),text),
+        nullptr
+        )
+    );
     text->setZOrder(999);
+    text2->setZOrder(999);
     this->addChild(text);
+    this->addChild(text2);
+    }
+    else{
+        text->setPosition({ winSize.width * 0.5f,winSize.height * 0.5f + 60.f });
+    text->setScale(hints[levelID].scale);
+    text->setOpacity(0);
+    text->runAction(
+        CCSequence::create(
+        CCFadeIn::create(0.5),
+        CCDelayTime::create(hints[levelID].delay),
+        CCFadeOut::create(0.5),
+        CCCallFuncO::create(text,callfuncO_selector(HintNode::onFinishAnim),text),
+        nullptr
+        ));
+        text->setZOrder(999);
+    //text2->setZOrder(999);
+    this->addChild(text);
+    }
+    //this->addChild(hintlayer);
 	} 
 };
