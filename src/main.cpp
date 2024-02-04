@@ -70,6 +70,89 @@ class $modify(PlayerObject){
 		hints::deaths++;
 	}
 };
+class CreateHintPopup : public geode::Popup<> {
+protected:
+    CCNode* nodeToRemove;
+    InputNode* hintTextInputNode;
+    InputNode* hintScaleInputNode;
+    InputNode* hintDelayInputNode;
+    void onCreate(cocos2d::CCObject*sender){
+        PlayLayer* playLayer = PlayLayer::get();
+        int levelID = playLayer->m_level->m_levelID;
+        std::string hintText = hintTextInputNode->getString();
+        std::string scaleText = hintScaleInputNode->getString();
+        std::string delayText = hintDelayInputNode->getString();
+        float scaleFloat = std::stof(scaleText);
+        float delayFloat = std::stof(delayText);
+        Mod::get()->setSettingValue<bool>("custom-hint",true);
+        Mod::get()->setSettingValue<int64_t>("custom-hint-levelid",levelID);
+        Mod::get()->setSettingValue<std::string>("custom-hint-text",hintText);
+        Mod::get()->setSettingValue<double>("custom-hint-text-scale",scaleFloat);
+        Mod::get()->setSettingValue<double>("custom-hint-text-delay",delayFloat);
+        FLAlertLayer::create("Success!","Hint created!","OK")->show();
+        this->nodeToRemove->removeFromParent();
+        this->onClose(sender);
+    }
+    virtual void onEnterTransitionDidFinish(){
+        if (!Mod::get()->getSettingValue<bool>("disable-creation-disclaimer")){
+            FLAlertLayer::create("Disclaimer!","You can <cr>ONLY</c> have <cr>ONE</c> <cy>custom</c> hint at a time for the time being.\nEvery time you <cj>create</c> a new hint your <co>old</c> one gets <cr>overwritten</c>.","OK")->show();
+            Mod::get()->setSettingValue<bool>("disable-creation-disclaimer",true);
+        }
+    }
+    bool setup() override {
+        auto winSize = CCDirector::sharedDirector()->getWinSize();
+
+        this->setTitle("Create Hint");
+
+        ButtonSprite* createBtnSprite = ButtonSprite::create("Create","goldFont.fnt","GJ_button_01.png");
+        CCMenuItemSpriteExtra* createBtn = CCMenuItemSpriteExtra::create(createBtnSprite,this,menu_selector(CreateHintPopup::onCreate));
+        CCMenu* menu = CCMenu::create();
+        hintTextInputNode = InputNode::create(250.f,"Jump!","chatFont.fnt");
+        hintScaleInputNode = InputNode::create(250.f/4,"0.7","chatFont.fnt");
+        hintDelayInputNode = InputNode::create(250.f/4,"4.0","chatFont.fnt");
+        CCLabelBMFont* hintTextLabel = CCLabelBMFont::create("Hint Text:","bigFont.fnt");
+        CCLabelBMFont* hintScaleLabel = CCLabelBMFont::create("Hint Scale:","bigFont.fnt");
+        CCLabelBMFont* hintDelayLabel = CCLabelBMFont::create("Hint Delay:","bigFont.fnt");
+
+
+        hintTextInputNode->getInput()->m_allowedChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!@#$%^&*()-=?.,/1234567890 ";
+        hintScaleInputNode->getInput()->m_allowedChars = "1234567890.";
+        hintDelayInputNode->getInput()->m_allowedChars = "1234567890.";
+        hintTextInputNode->setPosition({winSize.width / 2,winSize.height / 2 + 60});
+        hintTextLabel->setPosition({winSize.width / 2,winSize.height / 2 + 86});
+        hintTextLabel->setScale(0.4f);
+        hintScaleInputNode->setPosition({winSize.width / 2,winSize.height / 2});
+        hintScaleLabel->setPosition({winSize.width / 2,winSize.height / 2 + 26});
+        hintScaleLabel->setScale(0.4f);
+        hintDelayInputNode->setPosition({winSize.width / 2,winSize.height / 2 + -61});
+        hintDelayLabel->setPosition({winSize.width / 2,winSize.height / 2 + -35});
+        hintDelayLabel->setScale(0.4f);
+        createBtn->setPosition({0,-110});
+
+        this->m_mainLayer->addChild(hintTextInputNode);
+        this->m_mainLayer->addChild(hintScaleInputNode);
+        this->m_mainLayer->addChild(hintDelayInputNode);
+        this->m_mainLayer->addChild(hintTextLabel);
+        this->m_mainLayer->addChild(hintScaleLabel);
+        this->m_mainLayer->addChild(hintDelayLabel);
+        menu->addChild(createBtn);
+        this->m_mainLayer->addChild(menu);
+        //this->runAction(CCCallFuncO::create(this,callfuncO_selector(CreateHintPopup::openDisclaimer),this));
+        return true;
+    }
+
+public:
+    static CreateHintPopup* create(cocos2d::CCObject* sender) {
+        auto ret = new CreateHintPopup();
+        ret->nodeToRemove = static_cast<CCNode*>(sender);
+        if (ret && ret->init(300.f, 270.f)) {
+            ret->autorelease();
+            return ret;
+        }
+        CC_SAFE_DELETE(ret);
+        return nullptr;
+    }
+};
 class $modify(PauseLayer2,PauseLayer){
     void showHint(cocos2d::CCObject*sender){
         GameManager* gameManager = GameManager::sharedState();
@@ -77,8 +160,14 @@ class $modify(PauseLayer2,PauseLayer){
         hints::HintData hint = hints::getHints()[playLayer->m_level->m_levelID];
         FLAlertLayer::create("Hint",hint.hint,"OK")->show();
     }
+    void showCreateHint(cocos2d::CCObject*sender){
+        CreateHintPopup* popup = CreateHintPopup::create(sender);
+        popup->show();
+    }
 	void customSetup(){
 		PauseLayer::customSetup();
+        CCDirector* director = CCDirector::sharedDirector();
+        auto winSize = director->getWinSize();
         GameManager* gameManager = GameManager::sharedState();
         PlayLayer* playLayer = gameManager->getPlayLayer();
         hints::HintData hint = hints::getHints()[playLayer->m_level->m_levelID];
@@ -88,10 +177,20 @@ class $modify(PauseLayer2,PauseLayer){
         if (hint.hint == ""){
             btn->setColor({ 132, 132, 132 });
             btn->setEnabled(false);
+            CCSprite* createBtnSprite = CCSprite::createWithSpriteFrameName("GJ_plus3Btn_001.png");
+            CCMenuItemSpriteExtra* createBtn = CCMenuItemSpriteExtra::create(createBtnSprite,this,menu_selector(PauseLayer2::showCreateHint));
+            //OLD POS: createBtn->setPosition({-218, 125});
+            if (Loader::get()->isModLoaded("creo.small-gd-mods")){createBtn->setPosition({104,winSize.height-34});}
+            else{createBtn->setPosition({64,winSize.height-34});}
+            menu->addChild(createBtn);
         }
-        btn->setPosition({-248, 125});
+        //OLD POS: btn->setPosition({-248, 125});
+        if (Loader::get()->isModLoaded("creo.small-gd-mods")){btn->setPosition({74,winSize.height-34});}
+        else{btn->setPosition({34,winSize.height-34});}
+        menu->setPosition({0,0});
         menu->addChild(btn);
         this->addChild(menu);
+        
 	}
 };
 class $modify(PlayLayer2,PlayLayer) {
@@ -176,7 +275,7 @@ class $modify(PlayLayer2,PlayLayer) {
         CCFadeIn::create(0.5),
         CCDelayTime::create(hints[levelID].delay),
         CCFadeOut::create(0.5),
-        CCCallFuncO::create(text,callfuncO_selector(PlayLayer2::onFinishHintAnim),text),
+        CCCallFuncO::create(text2,callfuncO_selector(PlayLayer2::onFinishHintAnim),text2),
         nullptr
         )
     );
@@ -185,7 +284,7 @@ class $modify(PlayLayer2,PlayLayer) {
         CCFadeTo::create(0.5,160),
         CCDelayTime::create(hints[levelID].delay),
         CCFadeTo::create(0.5,0),
-        CCCallFuncO::create(text,callfuncO_selector(PlayLayer2::onFinishHintAnim),text),
+        CCCallFuncO::create(background,callfuncO_selector(PlayLayer2::onFinishHintAnim),background),
         nullptr
         )
     );
