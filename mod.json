@@ -1,7 +1,7 @@
 {
-	"geode": "2.0.0",
+	"geode": "2.0.0-beta.13",
 	"gd": {"win":"2.204","android":"2.205"},
-	"version": "v1.1.2",
+	"version": "v1.1.3",
 	"id": "cdc.more-hints",
 	"name": "Hints+",
 	"developer": "cdc",
@@ -59,6 +59,11 @@
             "name": "Jump Requirement",
             "type": "bool",
             "default": true
+        },
+        "disable-creation-disclaimer": {
+            "name": "Disable Custom Hint Creation Disclaimer",
+            "type": "bool",
+            "default": false
         }
     }
 }
