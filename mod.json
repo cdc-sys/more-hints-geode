@@ -1,7 +1,7 @@
 {
-	"geode": "2.0.0-beta.12",
+	"geode": "2.0.0",
 	"gd": {"win":"2.204","android":"2.205"},
-	"version": "v1.1.1",
+	"version": "v1.1.2",
 	"id": "cdc.more-hints",
 	"name": "Hints+",
 	"developer": "cdc",
@@ -54,6 +54,11 @@
             "name": "Hint Redesign (EXPERIMENTAL)",
             "type": "bool",
             "default": false
+        },
+        "require-no-jumps": {
+            "name": "Jump Requirement",
+            "type": "bool",
+            "default": true
         }
     }
 }
