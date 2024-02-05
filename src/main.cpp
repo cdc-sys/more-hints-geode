@@ -2,24 +2,23 @@
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/PauseLayer.hpp>
+#include <matjson/stl_serialize.hpp>
 
 using namespace geode::prelude;
 namespace hints{
-bool hintAnimationFinished = true;
-bool _jumpsRequirement;
-int deaths = 0;
-int jumps = 0;
-struct HintData {
+    bool hintAnimationFinished = true;
+    bool _jumpsRequirement;
+    int deaths = 0;
+    int jumps = 0;
+    struct HintData {
         std::string hint = "";
         float scale = 0.7f;
         float delay = 4.0f;
         
     };
-    std::unordered_map<int, hints::HintData> getHints(){
-        std::unordered_map<int, hints::HintData> hints = {};
-	if (Mod::get()->getSettingValue<bool>("more-hints")){
-    hints = {
-		{0,{"Jump!",0.8f,4.5f}},
+    std::unordered_map<int,hints::HintData> customHints = {};
+    std::unordered_map<int,hints::HintData> defaultHints = {
+		//{0,{"Jump!",0.8f,4.5f}},
         {1, {"Click / Space to jump over the spikes"}},
         {2, {"Touching a Jump Pad will launch you in the air", 0.6f,4.0f}},
         {3, {"Click while touching a ring to jump mid air"}},
@@ -42,8 +41,12 @@ struct HintData {
         {20,{""}},
         {21,{"Click / Space in the Spider gamemode to teleport to the nearest ceiling",0.4f}},
         {22,{"I know Geometry Dash is supposed to be unfair but this isn't sightreadable at all.",0.35f,4.5f}},
-        {3001,{"This level is absolutely filled with bugs..."}}
-    };
+        {3001,{"This level is absolutely filled with bugs..."}}};
+
+    std::unordered_map<int, hints::HintData> getHints(){
+        std::unordered_map<int, hints::HintData> hints = {};
+	if (Mod::get()->getSettingValue<bool>("more-hints")){
+        hints = hints::defaultHints;
 	}
 	if (Mod::get()->getSettingValue<bool>("robtop-hints")){
 		hints = {
@@ -52,17 +55,50 @@ struct HintData {
     };
 	}
 	if (Mod::get()->getSettingValue<bool>("custom-hint")){
-		int64_t custom_id = Mod::get()->getSettingValue<int64_t>("custom-hint-levelid");
+        hints = hints::customHints;
+		/*int64_t custom_id = Mod::get()->getSettingValue<int64_t>("custom-hint-levelid");
 		std::string custom_text = Mod::get()->getSettingValue<std::string>("custom-hint-text");
 		double custom_text_s = Mod::get()->getSettingValue<double>("custom-hint-text-scale");
 		double custom_text_d = Mod::get()->getSettingValue<double>("custom-hint-text-delay");
-		hints[custom_id] = hints::HintData{custom_text, static_cast<float>(custom_text_s), static_cast<float>(custom_text_d)};
+		hints[custom_id] = hints::HintData{custom_text, static_cast<float>(custom_text_s), static_cast<float>(custom_text_d)};*/
 	}
     return hints;
     }
 }
 
+template <>
+    struct ::matjson::Serialize<hints::HintData> {
+        static hints::HintData from_json(const matjson::Value& value) {
+            //geode::log::info("{}",value.dump());
+            return hints::HintData {
+                .hint = value["hint"].as_string(),
+                .scale = std::stof(value["scale"].as_string()),
+                .delay = std::stof(value["delay"].as_string()),
+            };
+        }
+        static matjson::Value to_json(const hints::HintData& hint) {
+            return matjson::Object {
+                { "hint", hint.hint },
+                { "scale", std::to_string(hint.scale) },
+                { "delay", std::to_string(hint.delay) }
+                };
+    }
+        // You can also implement this method:
+        // > static bool is_json(const matjson::Value& value);
+        // It is only used if you do value.is<User>();
+};
 
+namespace hints {
+    void saveCustomHints(){
+        std::unordered_map<std::string, hints::HintData> customHintsJSONCompat = {};
+        for (auto& [key, value]: hints::customHints) {  customHintsJSONCompat[std::to_string(key)] = value; }
+        Mod::get()->setSavedValue("custom_hints",customHintsJSONCompat);
+    }
+    void getSavedCustomHints(){
+        std::unordered_map<std::string, hints::HintData> customHintsJSONCompat = Mod::get()->getSavedValue<std::unordered_map<std::string, hints::HintData>>("custom_hints");
+        for (auto& [key, value]: customHintsJSONCompat) {  hints::customHints[std::stoi(key)] = value; }
+    }
+}
 
 class $modify(PlayerObject){
 	void playerDestroyed(bool p2){
@@ -76,40 +112,77 @@ protected:
     InputNode* hintTextInputNode;
     InputNode* hintScaleInputNode;
     InputNode* hintDelayInputNode;
+    bool editHintMode;
+    float clip(float n, float lower, float upper) {
+        return std::max(lower, std::min(n, upper));
+    }
     void onCreate(cocos2d::CCObject*sender){
         PlayLayer* playLayer = PlayLayer::get();
         int levelID = playLayer->m_level->m_levelID;
         std::string hintText = hintTextInputNode->getString();
         std::string scaleText = hintScaleInputNode->getString();
         std::string delayText = hintDelayInputNode->getString();
-        float scaleFloat = std::stof(scaleText);
-        float delayFloat = std::stof(delayText);
-        Mod::get()->setSettingValue<bool>("custom-hint",true);
+        if (hintText == ""){
+            hintText = "Jump!";
+        }
+        if (scaleText == ""){
+            scaleText = "0";
+        }
+        if (delayText == ""){
+            delayText = "0";
+        }
+        float scaleFloat = this->clip(std::stof(scaleText),0,2);
+        float delayFloat = this->clip(std::stof(delayText),2,6);
+        Mod::get()->setSettingValue<bool>("custom-hint",true);/*
         Mod::get()->setSettingValue<int64_t>("custom-hint-levelid",levelID);
         Mod::get()->setSettingValue<std::string>("custom-hint-text",hintText);
         Mod::get()->setSettingValue<double>("custom-hint-text-scale",scaleFloat);
-        Mod::get()->setSettingValue<double>("custom-hint-text-delay",delayFloat);
-        FLAlertLayer::create("Success!","Hint created!","OK")->show();
-        this->nodeToRemove->removeFromParent();
+        Mod::get()->setSettingValue<double>("custom-hint-text-delay",delayFloat);*/
+        hints::customHints[levelID] = hints::HintData{hintText, scaleFloat, delayFloat};
+        if (editHintMode){
+            FLAlertLayer::create("Success!","Hint edited!","OK")->show();
+        }
+        else{
+            FLAlertLayer::create("Success!","Hint created!","OK")->show();
+            this->nodeToRemove->removeFromParent();
+        }
         this->onClose(sender);
+        hints::saveCustomHints();
     }
     virtual void onEnterTransitionDidFinish(){
-        if (!Mod::get()->getSettingValue<bool>("disable-creation-disclaimer")){
-            FLAlertLayer::create("Disclaimer!","You can <cr>ONLY</c> have <cr>ONE</c> <cy>custom</c> hint at a time for the time being.\nEvery time you <cj>create</c> a new hint your <co>old</c> one gets <cr>overwritten</c>.","OK")->show();
-            Mod::get()->setSettingValue<bool>("disable-creation-disclaimer",true);
+        if (!Mod::get()->getSettingValue<bool>("disable-creation-disclaimer2")){
+            //FLAlertLayer::create("Disclaimer!","You can <cr>ONLY</c> have <cr>ONE</c> <cy>custom</c> hint at a time for the time being.\nEvery time you <cj>create</c> a new hint your <co>old</c> one gets <cr>overwritten</c>.","OK")->show();
+            //FLAlertLayer::create("Disclaimer!","You can <cr>ONLY</c> have <cj>TEMPORARY</c> <cy>custom</c> hints for the time being.\nYour custom hints are <cr>NOT</c> saved.","OK")->show();
+            FLAlertLayer::create("Disclaimer!","When you create a <cy>custom</c> hint the <co>Use Custom Hints</c> setting is <cg>enabled</c>.\n<co>Use Custom Hints</c> is <cr>NOT</c> compatible with <cr>ANY OTHER USE HINTS SETTING</c>, <cr>disable</c> it in the <cy>Mod Settings</c> to get the default <cb>Hints+</c> hints back.","OK")->show();
+            Mod::get()->setSettingValue<bool>("disable-creation-disclaimer2",true);
         }
     }
     bool setup() override {
+        PlayLayer* playLayer = PlayLayer::get();
+        int levelID = playLayer->m_level->m_levelID;
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
-        this->setTitle("Create Hint");
-
+        if (editHintMode){
+            this->setTitle("Edit Hint");
+        }
+        else{
+            this->setTitle("Create Hint");
+        }
         ButtonSprite* createBtnSprite = ButtonSprite::create("Create","goldFont.fnt","GJ_button_01.png");
+        if (editHintMode){
+            createBtnSprite = ButtonSprite::create("Edit","goldFont.fnt","GJ_button_01.png");
+        }
         CCMenuItemSpriteExtra* createBtn = CCMenuItemSpriteExtra::create(createBtnSprite,this,menu_selector(CreateHintPopup::onCreate));
         CCMenu* menu = CCMenu::create();
         hintTextInputNode = InputNode::create(250.f,"Jump!","chatFont.fnt");
         hintScaleInputNode = InputNode::create(250.f/4,"0.7","chatFont.fnt");
         hintDelayInputNode = InputNode::create(250.f/4,"4.0","chatFont.fnt");
+        if (editHintMode){
+            auto hints = hints::getHints();
+            hintTextInputNode->setString(hints[levelID].hint);
+            hintScaleInputNode->setString(std::to_string(hints[levelID].scale));
+            hintDelayInputNode->setString(std::to_string(hints[levelID].delay));
+        }
         CCLabelBMFont* hintTextLabel = CCLabelBMFont::create("Hint Text:","bigFont.fnt");
         CCLabelBMFont* hintScaleLabel = CCLabelBMFont::create("Hint Scale:","bigFont.fnt");
         CCLabelBMFont* hintDelayLabel = CCLabelBMFont::create("Hint Delay:","bigFont.fnt");
@@ -142,8 +215,9 @@ protected:
     }
 
 public:
-    static CreateHintPopup* create(cocos2d::CCObject* sender) {
+    static CreateHintPopup* create(cocos2d::CCObject* sender,bool edit) {
         auto ret = new CreateHintPopup();
+        ret->editHintMode = edit;
         ret->nodeToRemove = static_cast<CCNode*>(sender);
         if (ret && ret->init(300.f, 270.f)) {
             ret->autorelease();
@@ -154,6 +228,7 @@ public:
     }
 };
 class $modify(PauseLayer2,PauseLayer){
+    bool editHint = false;
     void showHint(cocos2d::CCObject*sender){
         GameManager* gameManager = GameManager::sharedState();
         PlayLayer* playLayer = gameManager->getPlayLayer();
@@ -161,8 +236,17 @@ class $modify(PauseLayer2,PauseLayer){
         FLAlertLayer::create("Hint",hint.hint,"OK")->show();
     }
     void showCreateHint(cocos2d::CCObject*sender){
-        CreateHintPopup* popup = CreateHintPopup::create(sender);
+        CreateHintPopup* popup = CreateHintPopup::create(sender,editHint);
         popup->show();
+    }
+    void deleteHint(cocos2d::CCObject*sender){
+        GameManager* gameManager = GameManager::sharedState();
+        PlayLayer* playLayer = gameManager->getPlayLayer();
+        int levelID = playLayer->m_level->m_levelID;
+        hints::customHints[levelID] = {};
+        FLAlertLayer::create("Success!","Hint deleted.","OK")->show();
+        static_cast<CCNode*>(sender)->removeFromParent();
+        editHint = false;
     }
 	void customSetup(){
 		PauseLayer::customSetup();
@@ -174,23 +258,42 @@ class $modify(PauseLayer2,PauseLayer){
         CCSprite* btnSprite = CCSprite::createWithSpriteFrameName("GJ_infoIcon_001.png");
         CCMenuItemSpriteExtra* btn = CCMenuItemSpriteExtra::create(btnSprite,this,menu_selector(PauseLayer2::showHint));
         CCMenu* menu = CCMenu::create();
+        CCMenu* leftMenu = static_cast<CCMenu*>(this->getChildByID("left-button-menu"));
+        leftMenu->addChild(btn);
+        bool usingCustomHints = Mod::get()->getSettingValue<bool>("custom-hint");
         if (hint.hint == ""){
             btn->setColor({ 132, 132, 132 });
             btn->setEnabled(false);
             CCSprite* createBtnSprite = CCSprite::createWithSpriteFrameName("GJ_plus3Btn_001.png");
             CCMenuItemSpriteExtra* createBtn = CCMenuItemSpriteExtra::create(createBtnSprite,this,menu_selector(PauseLayer2::showCreateHint));
             //OLD POS: createBtn->setPosition({-218, 125});
-            if (Loader::get()->isModLoaded("creo.small-gd-mods")){createBtn->setPosition({104,winSize.height-34});}
-            else{createBtn->setPosition({64,winSize.height-34});}
-            menu->addChild(createBtn);
+            //if (Loader::get()->isModLoaded("creo.small-gd-mods")){createBtn->setPosition({104,winSize.height-34});}
+            //else{createBtn->setPosition({64,winSize.height-34});}
+            //menu->addChild(createBtn);
+            leftMenu->addChild(createBtn);
+            editHint = false;
+        }
+        if (usingCustomHints&& hint.hint != ""){
+            CCSprite* createBtnSprite = CCSprite::createWithSpriteFrameName("GJ_editObjBtn3_001.png");
+            createBtnSprite->setScale(0.6f);
+            CCMenuItemSpriteExtra* createBtn = CCMenuItemSpriteExtra::create(createBtnSprite,this,menu_selector(PauseLayer2::showCreateHint));
+            leftMenu->addChild(createBtn);
+            editHint = true;
+            CCSprite* deleteBtnSprite = CCSprite::createWithSpriteFrameName("GJ_trashBtn_001.png");
+            deleteBtnSprite->setScale(0.5f);
+            CCMenuItemSpriteExtra* deleteBtn = CCMenuItemSpriteExtra::create(deleteBtnSprite,this,menu_selector(PauseLayer2::deleteHint));
+            leftMenu->addChild(deleteBtn);
         }
         //OLD POS: btn->setPosition({-248, 125});
-        if (Loader::get()->isModLoaded("creo.small-gd-mods")){btn->setPosition({74,winSize.height-34});}
-        else{btn->setPosition({34,winSize.height-34});}
-        menu->setPosition({0,0});
-        menu->addChild(btn);
-        this->addChild(menu);
-        
+       // if (Loader::get()->isModLoaded("creo.small-gd-mods")){btn->setPosition({74,winSize.height-34});}
+        //winSize.height-34
+        //else{btn->setPosition({bgPos.x+14,0});}
+        //menu->setPosition({-bg->getContentSize().width/2,-bg->getContentSize().height/2});
+        //menu->addChild(btn);
+        //this->addChild(menu);
+        //this->addChildAtPosition(menu,Anchor::TopLeft,{34,34});
+        //leftMenu->alignItemsVerticallyWithPadding(30.f);
+        leftMenu->updateLayout();
 	}
 };
 class $modify(PlayLayer2,PlayLayer) {
@@ -208,6 +311,7 @@ class $modify(PlayLayer2,PlayLayer) {
 		hints::deaths = 0;
 		hints::jumps = 0;
         hints::_jumpsRequirement = Mod::get()->getSettingValue<bool>("require-no-jumps");
+        hints::getSavedCustomHints();
 		return PlayLayer::init(p0,p1,p2);
 	}
 	void updateProgressbar(){
