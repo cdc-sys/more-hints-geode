@@ -5,7 +5,8 @@
 	"id": "cdc.more-hints",
 	"name": "Hints+",
 	"developer": "cdc",
-	"description": "**Hints+** adds more hints after you die two times in playlayer :)",
+	"description": "Adds more hints after you die twice in PlayLayer :)",
+    "repository": "https://github.com/CdcOnGitHub/more-hints-geode",
     "dependencies":[{
         "id": "geode.node-ids",
         "version":">=1.2.2",
