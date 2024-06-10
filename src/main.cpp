@@ -296,16 +296,19 @@ class $modify(PauseLayer2,PauseLayer){
         leftMenu->updateLayout();
 	}
 };
+
+class $modify(PlayerObject){
+    void incrementJumps(){
+		PlayerObject::incrementJumps();
+		hints::jumps++;
+	}
+};
 class $modify(PlayLayer2,PlayLayer) {
     void onFinishHintAnim(cocos2d::CCObject* sender) {
         //std::cout << "2" << std::endl;
         auto node = static_cast<CCNode*>(sender);
         node->removeFromParent();
     }
-	void incrementJumps(){
-		PlayLayer::incrementJumps();
-		hints::jumps++;
-	}
 	bool init(GJGameLevel* p0,bool p1,bool p2){
 		hints::hintAnimationFinished = true;
 		hints::deaths = 0;
